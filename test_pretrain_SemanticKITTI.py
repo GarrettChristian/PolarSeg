@@ -16,6 +16,31 @@ from dataloader.dataset import collate_fn_BEV,collate_fn_BEV_test,SemKITTI,SemKI
 import warnings
 warnings.filterwarnings("ignore")
 
+learning_map_inv = { # inverse of previous map
+    0: 0,      # "unlabeled", and others ignored
+    1: 10,     # "car"
+    2: 11,     # "bicycle"
+    3: 15,     # "motorcycle"
+    4: 18,     # "truck"
+    5: 20,     # "other-vehicle"
+    6: 30,     # "person"
+    7: 31,     # "bicyclist"
+    8: 32,     # "motorcyclist"
+    9: 40,     # "road"
+    10: 44,    # "parking"
+    11: 48,    # "sidewalk"
+    12: 49,    # "other-ground"
+    13: 50,    # "building"
+    14: 51,    # "fence"
+    15: 70,    # "vegetation"
+    16: 71,    # "trunk"
+    17: 72,    # "terrain"
+    18: 80,    # "pole"
+    19: 81,    # "traffic-sign"
+}
+
+
+
 def fast_hist(pred, label, n):
     k = (label >= 0) & (label < n)
     bin_count=np.bincount(
@@ -74,61 +99,97 @@ def main(args):
 
     # prepare dataset
     test_pt_dataset = SemKITTI(data_path + '/sequences/', imageset = 'test', return_ref = True)
-    val_pt_dataset = SemKITTI(data_path + '/sequences/', imageset = 'val', return_ref = True)
+    # val_pt_dataset = SemKITTI(data_path + '/sequences/', imageset = 'val', return_ref = True)
     if model == 'polar':
         test_dataset=spherical_dataset(test_pt_dataset, grid_size = grid_size, ignore_label = 0, fixed_volume_space = True, return_test= True)
-        val_dataset=spherical_dataset(val_pt_dataset, grid_size = grid_size, ignore_label = 0, fixed_volume_space = True)
+        # val_dataset=spherical_dataset(val_pt_dataset, grid_size = grid_size, ignore_label = 0, fixed_volume_space = True)
     elif model == 'traditional':
         test_dataset=voxel_dataset(test_pt_dataset, grid_size = grid_size, ignore_label = 0, fixed_volume_space = True, return_test= True)
-        val_dataset=voxel_dataset(val_pt_dataset, grid_size = grid_size, ignore_label = 0, fixed_volume_space = True)
+        # val_dataset=voxel_dataset(val_pt_dataset, grid_size = grid_size, ignore_label = 0, fixed_volume_space = True)
     test_dataset_loader = torch.utils.data.DataLoader(dataset = test_dataset,
                                                     batch_size = test_batch_size,
                                                     collate_fn = collate_fn_BEV_test,
                                                     shuffle = False,
                                                     num_workers = 4)
-    val_dataset_loader = torch.utils.data.DataLoader(dataset = val_dataset,
-                                                    batch_size = test_batch_size,
-                                                    collate_fn = collate_fn_BEV,
-                                                    shuffle = False,
-                                                    num_workers = 4)
-
+    # val_dataset_loader = torch.utils.data.DataLoader(dataset = val_dataset,
+    #                                                 batch_size = test_batch_size,
+    #                                                 collate_fn = collate_fn_BEV,
+    #                                                 shuffle = False,
+    #                                                 num_workers = 4)
+    
     # validation
-    print('*'*80)
-    print('Test network performance on validation split')
-    print('*'*80)
-    pbar = tqdm(total=len(val_dataset_loader))
+    # print('*'*80)
+    # print('Test network performance on validation split')
+    # print('*'*80)
+    # pbar = tqdm(total=len(val_dataset_loader))
+    # my_model.eval()
+    # hist_list = []
+    # time_list = []
+    # with torch.no_grad():
+    #     for i_iter_val,(_,val_vox_label,val_grid,val_pt_labs,val_pt_fea) in enumerate(val_dataset_loader):
+    #         val_vox_label = SemKITTI2train(val_vox_label)
+    #         val_pt_labs = SemKITTI2train(val_pt_labs)
+    #         val_pt_fea_ten = [torch.from_numpy(i).type(torch.FloatTensor).to(pytorch_device) for i in val_pt_fea]
+    #         val_grid_ten = [torch.from_numpy(i[:,:2]).to(pytorch_device) for i in val_grid]
+    #         val_label_tensor=val_vox_label.type(torch.LongTensor).to(pytorch_device)
+
+    #         torch.cuda.synchronize()
+    #         start_time = time.time()
+    #         predict_labels = my_model(val_pt_fea_ten, val_grid_ten)
+    #         torch.cuda.synchronize()
+    #         time_list.append(time.time()-start_time)
+
+    #         predict_labels = torch.argmax(predict_labels,dim=1)
+    #         predict_labels = predict_labels.cpu().detach().numpy()
+    #         for count,i_val_grid in enumerate(val_grid):
+    #             hist_list.append(fast_hist_crop(predict_labels[count,val_grid[count][:,0],val_grid[count][:,1],val_grid[count][:,2]],val_pt_labs[count],unique_label))
+    #         pbar.update(1)
+    # iou = per_class_iu(sum(hist_list))
+    # print('Validation per class iou: ')
+    # for class_name, class_iou in zip(unique_label_str,iou):
+    #     print('%s : %.2f%%' % (class_name, class_iou*100))
+    # val_miou = np.nanmean(iou) * 100
+    # del val_vox_label,val_grid,val_pt_fea,val_grid_ten
+    # pbar.close()
+    # print('Current val miou is %.3f ' % val_miou)
+    # print('Inference time per %d is %.4f seconds\n' %
+    #     (test_batch_size,np.mean(time_list)))
+
+
+
+        # validation
     my_model.eval()
-    hist_list = []
-    time_list = []
-    with torch.no_grad():
-        for i_iter_val,(_,val_vox_label,val_grid,val_pt_labs,val_pt_fea) in enumerate(val_dataset_loader):
-            val_vox_label = SemKITTI2train(val_vox_label)
-            val_pt_labs = SemKITTI2train(val_pt_labs)
-            val_pt_fea_ten = [torch.from_numpy(i).type(torch.FloatTensor).to(pytorch_device) for i in val_pt_fea]
-            val_grid_ten = [torch.from_numpy(i[:,:2]).to(pytorch_device) for i in val_grid]
-            val_label_tensor=val_vox_label.type(torch.LongTensor).to(pytorch_device)
+    # hist_list = []
+    # time_list = []
+    # with torch.no_grad():
+    #     for i_iter_val,(_,val_vox_label,val_grid,val_pt_labs,val_pt_fea) in enumerate(val_dataset_loader):
+    #         val_vox_label = SemKITTI2train(val_vox_label)
+    #         val_pt_labs = SemKITTI2train(val_pt_labs)
+    #         val_pt_fea_ten = [torch.from_numpy(i).type(torch.FloatTensor).to(pytorch_device) for i in val_pt_fea]
+    #         val_grid_ten = [torch.from_numpy(i[:,:2]).to(pytorch_device) for i in val_grid]
+    #         val_label_tensor=val_vox_label.type(torch.LongTensor).to(pytorch_device)
 
-            torch.cuda.synchronize()
-            start_time = time.time()
-            predict_labels = my_model(val_pt_fea_ten, val_grid_ten)
-            torch.cuda.synchronize()
-            time_list.append(time.time()-start_time)
+    #         torch.cuda.synchronize()
+    #         start_time = time.time()
+    #         predict_labels = my_model(val_pt_fea_ten, val_grid_ten)
+    #         torch.cuda.synchronize()
+    #         time_list.append(time.time()-start_time)
 
-            predict_labels = torch.argmax(predict_labels,dim=1)
-            predict_labels = predict_labels.cpu().detach().numpy()
-            for count,i_val_grid in enumerate(val_grid):
-                hist_list.append(fast_hist_crop(predict_labels[count,val_grid[count][:,0],val_grid[count][:,1],val_grid[count][:,2]],val_pt_labs[count],unique_label))
-            pbar.update(1)
-    iou = per_class_iu(sum(hist_list))
-    print('Validation per class iou: ')
-    for class_name, class_iou in zip(unique_label_str,iou):
-        print('%s : %.2f%%' % (class_name, class_iou*100))
-    val_miou = np.nanmean(iou) * 100
-    del val_vox_label,val_grid,val_pt_fea,val_grid_ten
-    pbar.close()
-    print('Current val miou is %.3f ' % val_miou)
-    print('Inference time per %d is %.4f seconds\n' %
-        (test_batch_size,np.mean(time_list)))
+    #         predict_labels = torch.argmax(predict_labels,dim=1)
+    #         predict_labels = predict_labels.cpu().detach().numpy()
+    #         for count,i_val_grid in enumerate(val_grid):
+    #             hist_list.append(fast_hist_crop(predict_labels[count,val_grid[count][:,0],val_grid[count][:,1],val_grid[count][:,2]],val_pt_labs[count],unique_label))
+    #         pbar.update(1)
+    # iou = per_class_iu(sum(hist_list))
+    # print('Validation per class iou: ')
+    # for class_name, class_iou in zip(unique_label_str,iou):
+    #     print('%s : %.2f%%' % (class_name, class_iou*100))
+    # val_miou = np.nanmean(iou) * 100
+    # del val_vox_label,val_grid,val_pt_fea,val_grid_ten
+    # pbar.close()
+    # print('Current val miou is %.3f ' % val_miou)
+    # print('Inference time per %d is %.4f seconds\n' %
+    #     (test_batch_size,np.mean(time_list)))
     
     # test
     print('*'*80)
@@ -158,13 +219,21 @@ def main(args):
                     except OSError as exc:
                         if exc.errno != errno.EEXIST:
                             raise
-                test_pred_label = test_pred_label.astype(np.uint32)
-                test_pred_label.tofile(new_save_dir)
+                # REMAP
+                remapedList = []
+                for lbl in test_pred_label:
+                    remapedList.append(learning_map_inv[int(lbl)])
+                remaped = np.array(remapedList)
+                
+                # test_pred_label = test_pred_label.astype(np.uint32)
+                # test_pred_label.tofile(new_save_dir)
+                remaped = remaped.astype(np.uint32)
+                remaped.tofile(new_save_dir)
             pbar.update(1)
-    del test_grid,test_pt_fea,test_index
+            # del test_grid,test_pt_fea,test_index
     pbar.close()
-    print('Predicted test labels are saved in %s. Need to be shifted to original label format before submitting to the Competition website.' % output_path)
-    print('Remapping script can be found in semantic-kitti-api.')
+    # print('Predicted test labels are saved in %s. Need to be shifted to original label format before submitting to the Competition website.' % output_path)
+    # print('Remapping script can be found in semantic-kitti-api.')
 
 if __name__ == '__main__':
     # Testing settings
