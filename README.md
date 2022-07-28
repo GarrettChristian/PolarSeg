@@ -1,3 +1,31 @@
+# PolarNet
+
+Fork for Semantic LiDAR Fuzzer
+
+---
+
+
+## Build Docker Image
+
+```
+cd to PolarSeg directory
+docker build . -t polarseg_image
+```
+
+
+## Run Docker Image
+- See Sample Run in runPolarDocker.sh or in the docker runner of semLidarFuzzer
+
+
+## Remove Docker Container
+```
+docker container stop polarseg && docker container rm polarseg
+```
+
+---
+
+
+
 # PolarNet: An Improved Grid Representation for Online LiDAR Point Clouds Semantic Segmentation
 
 
